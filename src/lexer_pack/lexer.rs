@@ -3,7 +3,6 @@ pub struct Lexer{
     pub line:String,
 
 }
-
 impl Lexer{
     pub fn new(lines:String) -> Lexer{
         Lexer{
@@ -12,7 +11,9 @@ impl Lexer{
     }
     pub fn analize(&mut self) -> Vec<LextToken>{
         let mut res = vec![];
-        let iter = self.line.chars();
+        for ch in self.line.chars(){
+            println!("{ch}");
+        }
         return res;
     }
 }

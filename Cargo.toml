@@ -3,4 +3,8 @@ name = "RustFuck"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "local"
+path = "src/lib.rs"
+
 [dependencies]
