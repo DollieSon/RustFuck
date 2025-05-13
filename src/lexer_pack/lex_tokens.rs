@@ -1,15 +1,13 @@
-use core::fmt;
-
-
+#[derive(PartialEq,Debug)]
 pub enum TokenType{
     MOVE_L,MOVE_R,INCREMENT,DECREMENT,OUTPUT,INPUT,BRACKET_O,BRAKET_C
 }
 
+#[derive(PartialEq,Debug)]
 pub struct LextToken{
     pub token:TokenType,
     pub line_num:i32,
 }
-
 impl LextToken{
     pub fn new(token_type:TokenType,line_num:i32) -> LextToken{
         return LextToken{
