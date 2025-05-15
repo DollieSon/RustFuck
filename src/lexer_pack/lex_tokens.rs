@@ -30,10 +30,10 @@ impl LextToken{
                return Self::new(TokenType::INCREMENT, line);
             },
             '.' => {
-               return Self::new(TokenType::MOVE_R, line);
+               return Self::new(TokenType::OUTPUT, line);
             },
             ',' => {
-               return Self::new(TokenType::OUTPUT, line);
+               return Self::new(TokenType::INPUT, line);
             },
             '[' => {
                return Self::new(TokenType::BRACKET_O, line);
