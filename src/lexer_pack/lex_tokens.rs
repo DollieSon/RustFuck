@@ -1,4 +1,4 @@
-#[derive(PartialEq,Debug)]
+#[derive(PartialEq,Debug,Clone)]
 pub enum TokenType{
     MOVE_L,MOVE_R,INCREMENT,DECREMENT,OUTPUT,INPUT,BRACKET_O,BRAKET_C
 }
