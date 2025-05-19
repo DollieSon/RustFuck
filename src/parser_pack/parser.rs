@@ -3,7 +3,7 @@ use std::{any::Any};
 
 use crate::{eval_pack::movement, lexer_pack::lex_tokens::{LextToken, TokenType}};
 
-use super::{parser_errors::ParserErrors, parser_obj::{Block, MoveDir, Movement, Operation, IO}};
+use super::{parser_errors::ParserErrors, parser_obj::{Block, IOType, MoveDir, Movement, Operation, IO}};
 
 
 pub trait Evaluateable {
@@ -42,6 +42,29 @@ impl Parser{
                         }
                     }
                 }
+                TokenType::DECREMENT | TokenType::INCREMENT =>{
+                    let res_token = self.parse_operation();
+                    match res_token {
+                        Ok(clean_tok) => {
+                            res.instructions.push(Box::new(clean_tok));
+                        }
+                        Err(err) => {
+                            panic!("ParsingErr: Movement - {:?}",err);
+                        }
+                    }
+                }
+                TokenType::INPUT | TokenType::OUTPUT => {
+                    let res_token = self.parse_IO();
+                    match res_token {
+                        Ok(tok) =>{
+                            res.instructions.push(Box::new(tok));
+                        }
+                        Err(err)=>{
+                            panic!("ParsingErr: Input - {:?}",err);
+                        }
+                    }
+                }
+                
                 _ => {
                     panic!("Parsing Erro: Uncovered token found");
                 }
@@ -105,6 +128,12 @@ impl Parser{
             }
         }
         return oper;
+    }
+    fn parse_IO(&mut self)->Result<IO,ParserErrors>{
+        let io_type:TokenType = self.tokens.get(self.curr_index).expect("IndexOutOfBoundsErr").token.clone();
+        return Ok(IO{
+            IO_type:if(io_type == TokenType::INPUT) {IOType::Input} else {IOType::Output}
+        });
     }
 
 }
