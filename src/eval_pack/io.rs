@@ -6,6 +6,10 @@ impl Evaluateable for IO {
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
-        todo!()
+        self
+    }
+    
+    fn print_self(&self) {
+        println!("{:?}",self);
     }
 }

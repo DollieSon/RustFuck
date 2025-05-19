@@ -1,14 +1,11 @@
-use core::num;
 use std::{any::Any};
-
-use crate::{eval_pack::movement, lexer_pack::lex_tokens::{LextToken, TokenType}};
-
+use crate::{lexer_pack::lex_tokens::{LextToken, TokenType}};
 use super::{parser_errors::ParserErrors, parser_obj::{Block, IOType, MoveDir, Movement, Operation, IO}};
-
 
 pub trait Evaluateable {
     fn evaluate(&self);
     fn as_any(&self) -> &dyn Any;
+    fn print_self(&self);
 }
 
 pub struct Parser{
@@ -28,6 +25,9 @@ impl Parser{
         let mut res = Block{
             instructions:vec![]
         };
+        let mut temp_res = Block{
+            instructions:vec![]
+        };
         let mut bracket_stack = Vec::<&LextToken>::new();
         while let Some(tok) = self.tokens.get(self.curr_index) {
             match tok.token {
@@ -35,7 +35,7 @@ impl Parser{
                     let res_token = self.parse_movement();
                     match res_token {
                         Ok(clean_tok) => {
-                            res.instructions.push(Box::new(clean_tok));
+                            temp_res.instructions.push(Box::new(clean_tok));
                         }
                         Err(err) => {
                             panic!("ParsingErr: Movement - {:?}",err);
@@ -46,7 +46,7 @@ impl Parser{
                     let res_token = self.parse_operation();
                     match res_token {
                         Ok(clean_tok) => {
-                            res.instructions.push(Box::new(clean_tok));
+                            temp_res.instructions.push(Box::new(clean_tok));
                         }
                         Err(err) => {
                             panic!("ParsingErr: Movement - {:?}",err);
@@ -57,21 +57,30 @@ impl Parser{
                     let res_token = self.parse_IO();
                     match res_token {
                         Ok(tok) =>{
-                            res.instructions.push(Box::new(tok));
+                            temp_res.instructions.push(Box::new(tok));
                         }
                         Err(err)=>{
                             panic!("ParsingErr: Input - {:?}",err);
                         }
                     }
                 }
-                
+                TokenType::BRACKET_O => {
+                    res.instructions.append(&mut temp_res.instructions);
+                }
+                TokenType::BRAKET_C => {
+                    res.instructions.push(Box::new(temp_res));
+                    temp_res = Block{
+                        instructions:vec![]
+                    }
+                }
                 _ => {
                     panic!("Parsing Erro: Uncovered token found");
                 }
             } 
+            self.curr_index+=1;
         }
-        while self.curr_index != self.tokens.len(){
-            
+        if temp_res.instructions.len() != 0 {
+            res.instructions.append(&mut temp_res.instructions);
         }
         //tempoarary
         return res;
