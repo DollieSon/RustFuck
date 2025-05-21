@@ -5,7 +5,7 @@ use lexer_pack::lexer::Lexer;
 use parser_pack::parser::{Evaluateable, Parser};
 
 fn main() {
-    let input = ".[++].[>>]".to_string();
+    let input = ".[+++++].[>>>>>>>].[[[[[[[]]]]]]][[>>>][<<<]]..[<<>>]".to_string();
     let mut lex = Lexer::new(input);
     let lex_res = lex.analize();
     println!("lexing done : {}",lex_res.len());

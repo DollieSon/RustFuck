@@ -1,4 +1,4 @@
-use std::{any::Any};
+use std::{any::Any, thread::panicking};
 use crate::{lexer_pack::lex_tokens::{LextToken, TokenType}};
 use super::{parser_errors::ParserErrors, parser_obj::{Block, IOType, MoveDir, Movement, Operation, IO}};
 
@@ -28,9 +28,8 @@ impl Parser{
             instructions:vec![]
         };
         self.block_stack.push(temp_block);
-        let mut bracket_stack = Vec::<&LextToken>::new();
         while let Some(tok) = self.get_next_token() {
-            // println!("Token :{} {:?}",self.curr_index,tok);
+            // println!("Token :{:?}",tok.token);
             match tok.token {
                 TokenType::MOVE_L =>{
                     // should probably be a macro
@@ -48,6 +47,7 @@ impl Parser{
                         steps: 1,
                         direction: MoveDir::Right
                     };
+
                     while let Ok(_) = self.get_next_token_if_eq(&TokenType::MOVE_R)  {
                         res_token.steps+=1;
                     }
@@ -93,14 +93,19 @@ impl Parser{
                 }
                 //TODO: handle errors
                 TokenType::BRAKET_C => {
+                    if self.block_stack.len() <= 1 {
+                        panic!("Parsing Error: Closing Bracket without pair");
+                    }
                     let top = self.block_stack.pop().unwrap();
-                    let bottom = self.block_stack.get_mut(0).unwrap();
-                    bottom.instructions.push(Box::new(top));
+                    self.insert_to_top(top);
                 }
                 _ => {
                     panic!("Parsing Error: Uncovered token found");
                 }
             } 
+        }
+        if self.block_stack.len() > 1 {
+            panic!("Parsing Error: Unclosed Bracket")
         }
         //tempoarary
         return self.block_stack.get(0).unwrap();
@@ -111,16 +116,19 @@ impl Parser{
         return res;
     }
     fn peek_token(&mut self)->Option<&LextToken>{
-        return self.tokens.get(self.curr_index+1);
+        return self.tokens.get(self.curr_index);
     }
     fn get_next_token_if_eq(&mut self,tok_type:&TokenType)-> Result<&LextToken,ParserErrors>{
         if let Some(x ) = self.peek_token(){
             if x.token == *tok_type{
+                // println!("Tok Eq");
                 return Ok(self.get_next_token().unwrap());
             }else{
+                // println!("Tok not Eq");
                 return Err(ParserErrors::TokenTypeNotEq);
             }
         }else{
+            // println!("Peek Not allowed");
             return Err(ParserErrors::NoPeekToken);
         }
     }
