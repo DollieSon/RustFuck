@@ -13,7 +13,7 @@ impl Evaluateable for Block {
         for thing in self.instructions.iter(){
             thing.print_self();
         }
-        println!("]");
+        println!("]\n");
     }
 
 }

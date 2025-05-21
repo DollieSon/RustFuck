@@ -10,93 +10,113 @@ pub trait Evaluateable {
 
 pub struct Parser{
     tokens:Vec<LextToken>,
-    curr_index:usize
+    curr_index:usize,
+    block_stack:Vec<Block>
 }
 
 impl Parser{
     pub fn new(lex_tok:Vec<LextToken>) -> Self{
         Parser { 
             tokens: lex_tok,
-            curr_index:0
+            curr_index:0,
+            block_stack:vec![]
         }
     }
 
-    pub fn evaluate(&mut self) ->Block{
-        let mut res = Block{
+    pub fn evaluate(&mut self) ->&Block{
+        let temp_block = Block{
             instructions:vec![]
         };
-        let mut temp_res = Block{
-            instructions:vec![]
-        };
+        self.block_stack.push(temp_block);
         let mut bracket_stack = Vec::<&LextToken>::new();
-        while let Some(tok) = self.tokens.get(self.curr_index) {
+        while let Some(tok) = self.get_next_token() {
+            // println!("Token :{} {:?}",self.curr_index,tok);
             match tok.token {
-                TokenType::MOVE_L | TokenType::MOVE_R => {
-                    let res_token = self.parse_movement();
-                    match res_token {
-                        Ok(clean_tok) => {
-                            temp_res.instructions.push(Box::new(clean_tok));
-                        }
-                        Err(err) => {
-                            panic!("ParsingErr: Movement - {:?}",err);
-                        }
+                TokenType::MOVE_L =>{
+                    // should probably be a macro
+                    let mut res_token = Movement{
+                        steps: 1,
+                        direction: MoveDir::Left
+                    };
+                    while let Ok(_) = self.get_next_token_if_eq(&TokenType::MOVE_L)  {
+                        res_token.steps+=1;
                     }
+                    self.insert_to_top(res_token);
                 }
-                TokenType::DECREMENT | TokenType::INCREMENT =>{
-                    let res_token = self.parse_operation();
-                    match res_token {
-                        Ok(clean_tok) => {
-                            temp_res.instructions.push(Box::new(clean_tok));
-                        }
-                        Err(err) => {
-                            panic!("ParsingErr: Movement - {:?}",err);
-                        }
+                TokenType::MOVE_R => {
+                    let mut res_token = Movement{
+                        steps: 1,
+                        direction: MoveDir::Right
+                    };
+                    while let Ok(_) = self.get_next_token_if_eq(&TokenType::MOVE_R)  {
+                        res_token.steps+=1;
                     }
+                    self.insert_to_top(res_token);
                 }
-                TokenType::INPUT | TokenType::OUTPUT => {
-                    let res_token = self.parse_IO();
-                    match res_token {
-                        Ok(tok) =>{
-                            temp_res.instructions.push(Box::new(tok));
-                        }
-                        Err(err)=>{
-                            panic!("ParsingErr: Input - {:?}",err);
-                        }
+                TokenType::DECREMENT => {
+                    let mut res_token =  Operation{
+                        value:-1,
+                    };
+                    while let Ok(_) = self.get_next_token_if_eq(&TokenType::DECREMENT)  {
+                        res_token.value-=1;
                     }
+                    self.insert_to_top(res_token);
+                } 
+                TokenType::INCREMENT =>{
+                    let mut res_token =  Operation{
+                        value:1,
+                    };
+                    while let Ok(_) = self.get_next_token_if_eq(&TokenType::INCREMENT)  {
+                        res_token.value+=1;
+                    }
+                    self.insert_to_top(res_token);
+                }
+                // should not exist btw
+                TokenType::INPUT => {
+                    let res_token =  IO{
+                        IO_type:IOType::Input
+                    };
+                    self.insert_to_top(res_token);
+                }
+                TokenType::OUTPUT => {
+                    let res_token =  IO{
+                        IO_type:IOType::Output
+                    };
+                    self.insert_to_top(res_token);
                 }
                 TokenType::BRACKET_O => {
-                    res.instructions.append(&mut temp_res.instructions);
-                }
-                TokenType::BRAKET_C => {
-                    res.instructions.push(Box::new(temp_res));
-                    temp_res = Block{
+                    let res_token = Block{
                         instructions:vec![]
-                    }
+                    };
+                    self.block_stack.push(res_token);
+                    // self.insert_to_top(res_token);
+                }
+                //TODO: handle errors
+                TokenType::BRAKET_C => {
+                    let top = self.block_stack.pop().unwrap();
+                    let bottom = self.block_stack.get_mut(0).unwrap();
+                    bottom.instructions.push(Box::new(top));
                 }
                 _ => {
-                    panic!("Parsing Erro: Uncovered token found");
+                    panic!("Parsing Error: Uncovered token found");
                 }
             } 
-            self.curr_index+=1;
-        }
-        if temp_res.instructions.len() != 0 {
-            res.instructions.append(&mut temp_res.instructions);
         }
         //tempoarary
+        return self.block_stack.get(0).unwrap();
+    }
+    fn get_next_token(&mut self) ->Option<&LextToken>{
+        let res = self.tokens.get(self.curr_index);
+        self.curr_index+=1;
         return res;
     }
-    // fn peek_token(&self) -> Result<&LextToken,ParserErrors>{
-    //     if let Some(x) = self.tokens.get(self.curr_index+1){
-    //         return Ok(x);
-    //     }else{
-    //         return Err(ParserErrors::NoPeekToken);
-    //     }
-    // }
+    fn peek_token(&mut self)->Option<&LextToken>{
+        return self.tokens.get(self.curr_index+1);
+    }
     fn get_next_token_if_eq(&mut self,tok_type:&TokenType)-> Result<&LextToken,ParserErrors>{
-        if let Some(x) = self.tokens.get(self.curr_index){
-            if x.token == *tok_type {
-                self.curr_index+=1;
-                return Ok(x);
+        if let Some(x ) = self.peek_token(){
+            if x.token == *tok_type{
+                return Ok(self.get_next_token().unwrap());
             }else{
                 return Err(ParserErrors::TokenTypeNotEq);
             }
@@ -104,45 +124,9 @@ impl Parser{
             return Err(ParserErrors::NoPeekToken);
         }
     }
-    // assume that current token is a movement token
-    fn parse_movement(&mut self)->Result<Movement,ParserErrors>{
-        let move_dir = self.tokens.get(self.curr_index).expect("IndexOutOfBounds").token.clone();
-        let mut res:Result<Movement, ParserErrors> =Ok(Movement { steps: 1, direction: if move_dir == TokenType::MOVE_L {MoveDir::Left} else {MoveDir::Right} });
-        while let Ok(_) = self.get_next_token_if_eq(&move_dir){
-            match res{
-                Ok(mut temp) => {
-                    temp.steps+=1;
-                    res = Ok(temp)
-                }
-                Err(err) =>{
-                    return Err(err);
-                }
-            }
-        }
-        return res;
-    }
-    //assume that current token is a operation
-    fn parse_operation(&mut self) -> Result<Operation,ParserErrors>{
-        let mut oper:Result<Operation,ParserErrors> = Err(ParserErrors::UnexpectedReturn);
-        let numer = self.tokens.get(self.curr_index).expect("IndexOutOfBoundsError").token.clone();
-        while let Ok(_) = self.get_next_token_if_eq(&numer){
-            match oper {
-                Ok(mut op)=>{
-                    op.value+= if numer == TokenType::DECREMENT {-1} else {1};
-                    oper = Ok(op);
-                }
-                Err(_) => {
-                    oper = Ok(Operation { value:if numer == TokenType::DECREMENT {-1} else {1} })
-                }
-            }
-        }
-        return oper;
-    }
-    fn parse_IO(&mut self)->Result<IO,ParserErrors>{
-        let io_type:TokenType = self.tokens.get(self.curr_index).expect("IndexOutOfBoundsErr").token.clone();
-        return Ok(IO{
-            IO_type:if(io_type == TokenType::INPUT) {IOType::Input} else {IOType::Output}
-        });
+    fn insert_to_top(&mut self,instruction : impl Evaluateable + 'static){
+        let topmost = self.block_stack.last_mut().expect("Error Block Stack Empty");
+        topmost.instructions.push(Box::new(instruction));
     }
 
 }
